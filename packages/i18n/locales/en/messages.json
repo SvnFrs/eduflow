@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
     "description": "Extension description",
-    "message": "Chrome extension boilerplate developed with Vite, React and Typescript"
+    "message": "UatoNaext: The automated grading assistant for educators"
   },
   "extensionName": {
     "description": "Extension name",
-    "message": "Chrome extension boilerplate"
+    "message": "UatoNaext Grading Assistant"
   },
   "toggleTheme": {
     "message": "Toggle theme"
@@ -15,7 +15,7 @@
   },
   "greeting": {
     "description": "Greeting message",
-    "message": "Hello, My name is $NAME$",
+    "message": "Welcome, $NAME$. Your grading assistant is ready.",
     "placeholders": {
       "name": {
         "content": "$1",

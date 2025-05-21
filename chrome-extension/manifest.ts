@@ -30,7 +30,7 @@ const manifest = {
   version: packageJson.version,
   description: '__MSG_extensionDescription__',
   host_permissions: ['<all_urls>'],
-  permissions: ['storage', 'scripting', 'tabs', 'notifications', 'sidePanel'],
+  permissions: ['storage', 'scripting', 'tabs', 'notifications', 'sidePanel', 'webRequest'],
   options_page: 'options/index.html',
   background: {
     service_worker: 'background.js',
@@ -56,6 +56,11 @@ const manifest = {
       js: ['content-ui/index.iife.js'],
     },
     {
+      matches: ['https://fugw-edunext.fpt.edu.vn/*'],
+      js: ['injected-fetch.js', 'content/index.iife.js'],
+      run_at: 'document_start',
+    },
+    {
       matches: ['http://*/*', 'https://*/*', '<all_urls>'],
       css: ['content.css'],
     },
@@ -63,7 +68,7 @@ const manifest = {
   devtools_page: 'devtools/index.html',
   web_accessible_resources: [
     {
-      resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png'],
+      resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png', 'injected-fetch.js'],
       matches: ['*://*/*'],
     },
   ],

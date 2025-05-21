@@ -39,11 +39,8 @@ const Popup = () => {
   };
 
   return (
-    <div className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
-      <header className={`App-header ${isLight ? 'text-gray-900' : 'text-gray-100'}`}>
-        <button onClick={goGithubSite}>
-          <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="logo" />
-        </button>
+    <div className={`${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
+      <header className={`${isLight ? 'text-gray-900' : 'text-gray-100'}`}>
         <p>
           Edit <code>pages/popup/src/Popup.tsx</code>
         </p>
