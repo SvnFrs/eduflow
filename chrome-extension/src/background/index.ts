@@ -4,9 +4,14 @@ console.log('Background loaded');
 
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Forward SUBJECTS_FETCHED messages to popup
+  if (message.type === 'SUBJECTS_FETCHED') {
+    chrome.runtime.sendMessage(message);
+  }
+
+  // Handle JWT token updates
   if (message.type === 'JWT_TOKEN_UPDATED') {
-    console.log('Background script received new JWT token');
-    // You could perform additional actions with the token here
+    console.log('Background script received updated JWT token');
   }
 });
 
