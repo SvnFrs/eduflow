@@ -33,7 +33,7 @@
     const options = args[1] || {};
 
     // Check if this is a request to the API we care about
-    if (typeof request === 'string' && request.includes('fugw-edunext.fpt.edu.vn/fu')) {
+    if (typeof request === 'string' && request.includes('fugw-edunext.fpt.edu.vn/fu/api/v1/')) {
       const headers = options.headers || {};
 
       // Capture headers if they contain the required fields
@@ -82,15 +82,152 @@
     return originalXHRSetRequestHeader.call(this, name, value);
   };
 
-  // Function to handle course redirection (simplified)
+  // Function to format date in the same format as the original requests
+  const formatDate = date => {
+    // Use local time instead of UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
+  // Function to generate headers using captured values or fallback
+  const generateApiHeaders = token => {
+    const baseHeaders = {
+      accept: 'application/json, text/plain, */*',
+      'accept-language': 'en-US,en;q=0.9',
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+      priority: 'u=1, i',
+      'sec-ch-ua': '"Chromium";v="137", "Not/A)Brand";v="24"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Linux"',
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-site',
+    };
+
+    // If we have captured headers and they're recent (within 30 seconds), use them
+    if (capturedHeaders && lastCaptureTime) {
+      const now = new Date();
+      const timeSinceCapture = now.getTime() - lastCaptureTime.getTime();
+
+      // Only use captured headers if they're recent (within 30 seconds)
+      if (timeSinceCapture < 30000) {
+        // Update the timestamp to current time using local time
+        const expiration = new Date(now.getTime() + 2 * 60 * 1000); // 2 minutes from now
+
+        const updatedHeaders = {
+          ...baseHeaders,
+          'x-checksum': capturedHeaders['x-checksum'], // Reuse the same checksum
+          'x-date': formatDate(now),
+          'x-expiration': formatDate(expiration),
+          'x-hash': capturedHeaders['x-hash'], // Reuse the same hash
+        };
+
+        console.log('[Uato Naext] Using captured headers with updated timestamp:', {
+          'x-date': updatedHeaders['x-date'],
+          'x-expiration': updatedHeaders['x-expiration'],
+        });
+
+        return updatedHeaders;
+      } else {
+        console.log('[Uato Naext] Captured headers too old, clearing them');
+        capturedHeaders = null;
+        lastCaptureTime = null;
+      }
+    }
+
+    // Fallback: try to make request without these headers first
+    console.log('[Uato Naext] No valid captured headers, using base headers only');
+    return baseHeaders;
+  };
+
+  // Function to fetch class list for a course
+  const fetchClassList = async courseId => {
+    const token = getJwtToken();
+    if (!token) {
+      throw new Error('No JWT token found');
+    }
+
+    try {
+      console.log('[Uato Naext] Attempting to fetch class list for course:', courseId);
+
+      // First, try to trigger a legitimate request to capture fresh headers
+      if (!capturedHeaders || !lastCaptureTime || new Date().getTime() - lastCaptureTime.getTime() > 30000) {
+        console.log('[Uato Naext] No recent headers available, requesting fresh headers...');
+
+        // Wait a moment to see if any legitimate requests happen
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      let headers = generateApiHeaders(token);
+
+      let response = await originalFetch(
+        `https://fugw-edunext.fpt.edu.vn/fu/api/v1/class/list-class?courseId=${courseId}`,
+        {
+          method: 'GET',
+          headers: headers,
+          mode: 'cors',
+          credentials: 'include',
+        },
+      );
+
+      // If the first attempt fails, wait a bit more for headers to be captured
+      if (!response.ok && (!capturedHeaders || !lastCaptureTime)) {
+        console.log('[Uato Naext] First attempt failed, waiting longer for headers to be captured...');
+
+        // Wait longer for headers to be captured from other requests
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Try again with potentially captured headers
+        headers = generateApiHeaders(token);
+        response = await originalFetch(
+          `https://fugw-edunext.fpt.edu.vn/fu/api/v1/class/list-class?courseId=${courseId}`,
+          {
+            method: 'GET',
+            headers: headers,
+            mode: 'cors',
+            credentials: 'include',
+          },
+        );
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Uato Naext] API request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.code === '200' && result.data && result.data.length > 0) {
+        return result.data[0]; // Return the first class
+      } else {
+        throw new Error(`No classes found for this course. Response: ${JSON.stringify(result)}`);
+      }
+    } catch (error) {
+      console.error('[Uato Naext] Error fetching class list:', error);
+      throw error;
+    }
+  };
+
+  // Function to handle course redirection
   const handleCourseRedirection = async courseId => {
     try {
       console.log(`[Uato Naext] Handling redirection for course ${courseId}`);
 
-      // Create the direct URL without needing to fetch class information
-      const redirectUrl = `https://fu-edunext.fpt.edu.vn/course?id=${courseId}`;
+      const classInfo = await fetchClassList(courseId);
+      const classId = classInfo.id;
 
-      console.log(`[Uato Naext] Redirecting directly to: ${redirectUrl}`);
+      console.log(`[Uato Naext] Found class ID: ${classId} for course ${courseId}`);
 
       // Send the redirection info back to content script
       window.dispatchEvent(
@@ -99,7 +236,11 @@
             type: 'course_redirect',
             data: {
               courseId,
-              redirectUrl,
+              classId,
+              className: classInfo.name,
+              semesterName: classInfo.semesterName,
+              campusCode: classInfo.campusCode,
+              redirectUrl: `https://fu-edunext.fpt.edu.vn/course?id=${courseId}&classId=${classId}`,
             },
           },
         }),
@@ -111,7 +252,7 @@
         new CustomEvent('UATO_API_RESPONSE', {
           detail: {
             type: 'course_redirect',
-            error: error.message || 'Failed to create redirect URL',
+            error: error.message || 'Failed to get class information',
           },
         }),
       );
