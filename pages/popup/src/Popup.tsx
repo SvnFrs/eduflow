@@ -14,6 +14,7 @@ const Popup = () => {
   const isLight = theme === 'light';
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(false);
+  const [redirectingCourseId, setRedirectingCourseId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [semester, setSemester] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -50,14 +51,12 @@ const Popup = () => {
           setLastFetched(new Date());
           setLoading(false);
 
-          // Extract semester from courseCode if available
           const semesterFromCode = extractSemesterFromCode(processedSubjects);
           if (semesterFromCode) {
             setSemester(formatSemesterName(semesterFromCode));
             chrome.storage.local.set({ selectedSemester: semesterFromCode });
           }
 
-          // Cache the processed subjects
           chrome.storage.local.set({
             subjects: processedSubjects,
             lastFetched: new Date().toISOString(),
@@ -65,6 +64,16 @@ const Popup = () => {
         } else if (message.error) {
           setError(message.error);
           setLoading(false);
+        }
+      } else if (message.type === 'COURSE_REDIRECT_READY') {
+        if (message.data) {
+          console.log('[Uato Naext] Course redirect ready:', message.data);
+          // Open the course in a new tab with the proper classId
+          chrome.tabs.create({ url: message.data.redirectUrl });
+          setRedirectingCourseId(null);
+        } else if (message.error) {
+          setError(`Failed to redirect: ${message.error}`);
+          setRedirectingCourseId(null);
         }
       }
     };
@@ -167,9 +176,68 @@ const Popup = () => {
     }
   };
 
-  const navigateToSubject = (courseId: number) => {
-    const url = `https://fu-edunext.fpt.edu.vn/course/${courseId}/`;
-    chrome.tabs.create({ url });
+  const navigateToSubject = async (courseId: number) => {
+    try {
+      setRedirectingCourseId(courseId);
+      setError(null);
+
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]?.id) {
+        // If not on university site, create new tab first
+        const newTab = await chrome.tabs.create({ url: 'https://fu-edunext.fpt.edu.vn/' });
+        if (newTab.id) {
+          // Wait a bit for the page to load, then try to redirect
+          setTimeout(() => {
+            chrome.tabs.sendMessage(newTab.id!, {
+              type: 'REDIRECT_TO_COURSE',
+              courseId,
+            });
+          }, 3000);
+        }
+        return;
+      }
+
+      if (connectionStatus !== 'connected') {
+        // Open university site first
+        const newTab = await chrome.tabs.create({ url: 'https://fu-edunext.fpt.edu.vn/' });
+        if (newTab.id) {
+          // Wait for the page to load, then try to redirect
+          setTimeout(() => {
+            chrome.tabs.sendMessage(newTab.id!, {
+              type: 'REDIRECT_TO_COURSE',
+              courseId,
+            });
+          }, 3000);
+        }
+        return;
+      }
+
+      // Send message to content script to handle the redirection
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        {
+          type: 'REDIRECT_TO_COURSE',
+          courseId,
+        },
+        response => {
+          if (!response) {
+            setError('Could not communicate with page. Please make sure you are on the university website.');
+            setRedirectingCourseId(null);
+          }
+        },
+      );
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (redirectingCourseId === courseId) {
+          setRedirectingCourseId(null);
+          setError('Redirection timed out. Please try again.');
+        }
+      }, 10000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to navigate to subject');
+      setRedirectingCourseId(null);
+    }
   };
 
   const navigateToUniversity = () => {
@@ -197,14 +265,79 @@ const Popup = () => {
     return `${diffDays} days ago`;
   };
 
+  const renderSubjectsSection = () => {
+    // Don't show subjects if not connected to university site
+    if (connectionStatus !== 'connected') {
+      return (
+        <div className="not-connected-state">
+          <div className="university-icon">🎓</div>
+          <p className="not-connected-title">Connect to University</p>
+          <p className="not-connected-description">
+            Navigate to the FPT University website to view and manage your subjects.
+          </p>
+          <button className="connect-button" onClick={navigateToUniversity}>
+            Go to University Site
+          </button>
+        </div>
+      );
+    }
+
+    // Show loading state
+    if (loading) {
+      return (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading your subjects...</p>
+        </div>
+      );
+    }
+
+    // Show subjects if available
+    if (subjects.length > 0) {
+      return (
+        <div className="subjects-list">
+          {subjects.map(subject => (
+            <button
+              key={subject.courseId}
+              className="subject-item"
+              onClick={() => navigateToSubject(subject.courseId)}
+              disabled={redirectingCourseId === subject.courseId}
+              tabIndex={0}>
+              <h3>{subject.title}</h3>
+              <p className="course-code">{subject.courseCode}</p>
+              {redirectingCourseId === subject.courseId && (
+                <div className="redirecting-indicator">
+                  <div className="spinner"></div>
+                  <span>Redirecting...</span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    // Show empty state when connected but no subjects
+    return (
+      <div className="empty-state">
+        <p>No subjects loaded</p>
+        <p className="help-text">Click "Get Subjects" to load your courses</p>
+      </div>
+    );
+  };
+
   return (
     <div className={`popup-container ${isLight ? 'light-theme' : 'dark-theme'}`}>
       <header>
         <h1>Uato Naext</h1>
-        <div className="semester">
-          {semester && <span className="semester-name">{semester}</span>}
-          {lastFetched && subjects.length > 0 && <span className="last-fetched"> • Updated {formatLastFetched()}</span>}
-        </div>
+        {connectionStatus === 'connected' && (
+          <div className="semester">
+            {semester && <span className="semester-name">{semester}</span>}
+            {lastFetched && subjects.length > 0 && (
+              <span className="last-fetched"> • Updated {formatLastFetched()}</span>
+            )}
+          </div>
+        )}
 
         <div className={`connection-status ${connectionStatus}`}>
           <span className="status-indicator"></span>
@@ -212,50 +345,17 @@ const Popup = () => {
         </div>
       </header>
 
-      <div className="actions">
-        {connectionStatus === 'connected' ? (
+      {connectionStatus === 'connected' && (
+        <div className="actions">
           <button className="fetch-button" onClick={fetchSubjects} disabled={loading}>
             {loading ? 'Loading...' : subjects.length > 0 ? 'Refresh Subjects' : 'Get Subjects'}
           </button>
-        ) : (
-          <button className="fetch-button go-to-site" onClick={navigateToUniversity}>
-            Go to University Site
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && <div className="error-message">{error}</div>}
 
-      <div className="subjects-container">
-        {loading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Loading your subjects...</p>
-          </div>
-        ) : subjects.length > 0 ? (
-          <div className="subjects-list">
-            {subjects.map(subject => (
-              <button
-                key={subject.courseId}
-                className="subject-item"
-                onClick={() => navigateToSubject(subject.courseId)}
-                tabIndex={0}>
-                <h3>{subject.title}</h3>
-                <p className="course-code">{subject.courseCode}</p>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>No subjects loaded</p>
-            <p className="help-text">
-              {connectionStatus === 'connected'
-                ? 'Click "Get Subjects" to load your courses'
-                : 'Please navigate to the university website'}
-            </p>
-          </div>
-        )}
-      </div>
+      <div className="subjects-container">{renderSubjectsSection()}</div>
 
       <footer>
         <div className="version">v1.0.0</div>

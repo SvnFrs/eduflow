@@ -52,6 +52,14 @@ window.addEventListener('UATO_API_RESPONSE', (event: Event) => {
       error,
       timestamp: new Date().toISOString(),
     });
+  } else if (type === 'course_redirect') {
+    console.log('[Uato Naext] Received course redirect data from page context');
+    chrome.runtime.sendMessage({
+      type: 'COURSE_REDIRECT_READY',
+      data,
+      error,
+      timestamp: new Date().toISOString(),
+    });
   }
 });
 
@@ -59,13 +67,18 @@ window.addEventListener('UATO_API_RESPONSE', (event: Event) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'FETCH_SUBJECTS') {
     console.log('[Uato Naext] Received request to fetch subjects');
-
-    // Trigger the fetch subjects function in the page context
     window.dispatchEvent(new CustomEvent('UATO_FETCH_SUBJECTS'));
-
-    // Let the popup know we're processing the request
     sendResponse({ status: 'processing' });
-    return true; // Keep the message channel open for async response
+    return true;
+  } else if (message.type === 'REDIRECT_TO_COURSE') {
+    console.log('[Uato Naext] Received request to redirect to course:', message.courseId);
+    window.dispatchEvent(
+      new CustomEvent('UATO_COURSE_REDIRECT', {
+        detail: { courseId: message.courseId },
+      }),
+    );
+    sendResponse({ status: 'processing' });
+    return true;
   }
 });
 
