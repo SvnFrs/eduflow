@@ -17,6 +17,127 @@ const injectApiHandler = () => {
   (document.head || document.documentElement).appendChild(script);
 };
 
+// Function to call Gemini API from content script
+const callGeminiAPI = async (quizContent: string, courseTitle: string): Promise<string> => {
+  const GEMINI_API_KEY = '';
+  const prompt = `Please generate a short answer based on the following quiz content and course: ${quizContent}, the course is ${courseTitle}`;
+
+  try {
+    console.log('[Uato Naext] Making Gemini API request from content script...');
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    );
+
+    console.log('[Uato Naext] Gemini API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Uato Naext] Gemini API error response:', errorText);
+      throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('[Uato Naext] Gemini API response data:', data);
+
+    if (
+      data.candidates &&
+      data.candidates.length > 0 &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts &&
+      data.candidates[0].content.parts.length > 0
+    ) {
+      return data.candidates[0].content.parts[0].text;
+    } else {
+      throw new Error('Invalid response format from Gemini API');
+    }
+  } catch (error) {
+    console.error('[Uato Naext] Error calling Gemini API from content script:', error);
+    throw error;
+  }
+};
+
+// Function to generate AI response and fill input
+const generateAndFillAiResponse = async (quizContent: string, courseTitle: string) => {
+  try {
+    console.log('[Uato Naext] Starting AI response generation...');
+    console.log('[Uato Naext] Quiz content:', quizContent);
+    console.log('[Uato Naext] Course title:', courseTitle);
+
+    // First check if the markdown editor is present by asking the page context
+    const hasEditor = await new Promise<boolean>(resolve => {
+      const checkEditor = () => {
+        window.dispatchEvent(new CustomEvent('UATO_CHECK_MARKDOWN_EDITOR'));
+      };
+
+      const handleEditorCheck = (event: Event) => {
+        const customEvent = event as CustomEvent;
+        if (customEvent.detail?.type === 'markdown_editor_check') {
+          window.removeEventListener('UATO_API_RESPONSE', handleEditorCheck);
+          resolve(customEvent.detail.hasEditor || false);
+        }
+      };
+
+      window.addEventListener('UATO_API_RESPONSE', handleEditorCheck);
+      checkEditor();
+
+      // Timeout after 3 seconds
+      setTimeout(() => {
+        window.removeEventListener('UATO_API_RESPONSE', handleEditorCheck);
+        resolve(false);
+      }, 3000);
+    });
+
+    if (!hasEditor) {
+      throw new Error('Markdown editor not found. Please navigate to the discussion page first.');
+    }
+
+    // Call Gemini API from content script
+    const aiResponse = await callGeminiAPI(quizContent, courseTitle);
+    console.log('[Uato Naext] Received AI response:', aiResponse);
+
+    // Send the response to page context to fill the editor
+    window.dispatchEvent(
+      new CustomEvent('UATO_FILL_EDITOR', {
+        detail: { text: aiResponse },
+      }),
+    );
+
+    // Send success response to popup
+    chrome.runtime.sendMessage({
+      type: 'AI_RESPONSE_COMPLETE',
+      data: { success: true, response: aiResponse },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Uato Naext] Error generating AI response:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate AI response';
+
+    chrome.runtime.sendMessage({
+      type: 'AI_RESPONSE_COMPLETE',
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+
 // Inject scripts
 injectScript();
 injectApiHandler();
@@ -60,8 +181,50 @@ window.addEventListener('UATO_API_RESPONSE', (event: Event) => {
       error,
       timestamp: new Date().toISOString(),
     });
+  } else if (type === 'current_course') {
+    console.log('[Uato Naext] Received current course data from page context');
+    chrome.runtime.sendMessage({
+      type: 'CURRENT_COURSE_INFO',
+      data,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+  } else if (type === 'discussion_redirect') {
+    console.log('[Uato Naext] Received discussion redirect result from page context');
+    chrome.runtime.sendMessage({
+      type: 'DISCUSSION_REDIRECT_COMPLETE',
+      data,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+  } else if (type === 'editor_filled') {
+    console.log('[Uato Naext] Editor filled successfully');
+    chrome.runtime.sendMessage({
+      type: 'AI_RESPONSE_COMPLETE',
+      data: { success: true },
+      timestamp: new Date().toISOString(),
+    });
+  } else if (type === 'editor_fill_error') {
+    console.log('[Uato Naext] Error filling editor');
+    chrome.runtime.sendMessage({
+      type: 'AI_RESPONSE_COMPLETE',
+      error: error || 'Failed to fill editor',
+      timestamp: new Date().toISOString(),
+    });
   }
 });
+
+// Function to check current course info
+const checkCurrentCourse = () => {
+  console.log('[Uato Naext] Requesting current course info');
+  window.dispatchEvent(new CustomEvent('UATO_GET_CURRENT_COURSE'));
+};
+
+// Function to navigate to discussion
+const navigateToDiscussion = () => {
+  console.log('[Uato Naext] Requesting navigation to discussion');
+  window.dispatchEvent(new CustomEvent('UATO_NAVIGATE_TO_DISCUSSION'));
+};
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -79,8 +242,79 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     );
     sendResponse({ status: 'processing' });
     return true;
+  } else if (message.type === 'GET_CURRENT_COURSE') {
+    console.log('[Uato Naext] Received request to get current course');
+    checkCurrentCourse();
+    sendResponse({ status: 'processing' });
+    return true;
+  } else if (message.type === 'NAVIGATE_TO_DISCUSSION') {
+    console.log('[Uato Naext] Received request to navigate to discussion');
+    navigateToDiscussion();
+    sendResponse({ status: 'processing' });
+    return true;
+  } else if (message.type === 'GENERATE_AI_RESPONSE') {
+    console.log('[Uato Naext] Received request to generate AI response');
+    const { quizContent, courseTitle } = message;
+    if (quizContent && courseTitle) {
+      generateAndFillAiResponse(quizContent, courseTitle);
+      sendResponse({ status: 'processing' });
+    } else {
+      sendResponse({ status: 'error', error: 'Missing quiz content or course title' });
+    }
+    return true;
   }
 });
+
+// Monitor URL changes for single-page application behavior
+let currentUrl = window.location.href;
+
+const handleUrlChange = () => {
+  if (window.location.href !== currentUrl) {
+    currentUrl = window.location.href;
+    console.log('[Uato Naext] URL changed in content script:', currentUrl);
+
+    // Wait a moment for the page to settle, then check current course
+    setTimeout(() => {
+      checkCurrentCourse();
+    }, 1000);
+  }
+};
+
+// Check for URL changes periodically
+setInterval(handleUrlChange, 2000);
+
+// Listen for navigation events
+window.addEventListener('popstate', () => {
+  console.log('[Uato Naext] Popstate event detected');
+  setTimeout(() => {
+    checkCurrentCourse();
+  }, 1000);
+});
+
+// Listen for pushstate/replacestate (for SPAs)
+const originalPushState = history.pushState;
+const originalReplaceState = history.replaceState;
+
+history.pushState = function (...args) {
+  originalPushState.apply(this, args);
+  console.log('[Uato Naext] PushState detected');
+  setTimeout(() => {
+    checkCurrentCourse();
+  }, 1000);
+};
+
+history.replaceState = function (...args) {
+  originalReplaceState.apply(this, args);
+  console.log('[Uato Naext] ReplaceState detected');
+  setTimeout(() => {
+    checkCurrentCourse();
+  }, 1000);
+};
+
+// Check current course when content script loads
+setTimeout(() => {
+  checkCurrentCourse();
+}, 2000);
 
 // Check if there's already a token in storage
 chrome.storage.local.get(['jwtToken'], result => {
@@ -88,3 +322,47 @@ chrome.storage.local.get(['jwtToken'], result => {
     console.log('[Uato Naext] Retrieved token from storage');
   }
 });
+
+// Listen for DOM changes that might indicate navigation
+const observer = new MutationObserver(mutations => {
+  let shouldCheck = false;
+
+  mutations.forEach(mutation => {
+    // Check if the page title changed (common indicator of navigation)
+    if (mutation.type === 'childList' && mutation.target === document.head) {
+      const titleElements = mutation.addedNodes;
+      for (let i = 0; i < titleElements.length; i++) {
+        if (titleElements[i].nodeName === 'TITLE') {
+          shouldCheck = true;
+          break;
+        }
+      }
+    }
+
+    // Check if main content areas changed
+    if (
+      mutation.type === 'childList' &&
+      mutation.target instanceof Element &&
+      (mutation.target.id.includes('main') ||
+        mutation.target.id.includes('content') ||
+        mutation.target.id.includes('app'))
+    ) {
+      shouldCheck = true;
+    }
+  });
+
+  if (shouldCheck) {
+    console.log('[Uato Naext] DOM changes detected, checking current course');
+    setTimeout(() => {
+      checkCurrentCourse();
+    }, 1500);
+  }
+});
+
+// Start observing DOM changes
+observer.observe(document, {
+  childList: true,
+  subtree: true,
+});
+
+console.log('[Uato Naext] Content script initialization complete');

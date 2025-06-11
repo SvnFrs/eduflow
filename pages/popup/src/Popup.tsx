@@ -9,16 +9,35 @@ interface Subject {
   courseCode: string;
 }
 
+interface CurrentCourse extends Subject {
+  // Additional properties if needed
+}
+
+interface QuizInfo {
+  id: string;
+  classId: string;
+  sessionId: string;
+  content: string;
+  hasMarkdownEditor: boolean; // Add this field
+}
+
+type PageType = 'homepage' | 'course' | 'quiz' | 'other';
+
 const Popup = () => {
   const theme = useStorage(exampleThemeStorage);
   const isLight = theme === 'light';
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [currentCourse, setCurrentCourse] = useState<CurrentCourse | null>(null);
+  const [currentQuiz, setCurrentQuiz] = useState<QuizInfo | null>(null);
+  const [pageType, setPageType] = useState<PageType>('other');
   const [loading, setLoading] = useState(false);
   const [redirectingCourseId, setRedirectingCourseId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [semester, setSemester] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
+  const [discussionLoading, setDiscussionLoading] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   useEffect(() => {
     // Check if we're on the university site
@@ -40,6 +59,9 @@ const Popup = () => {
         setSemester(formattedSemester);
       }
     });
+
+    // Request current course info when popup opens
+    requestCurrentCourseInfo();
 
     // Listen for messages from content script
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,6 +97,28 @@ const Popup = () => {
           setError(`Failed to redirect: ${message.error}`);
           setRedirectingCourseId(null);
         }
+      } else if (message.type === 'CURRENT_COURSE_INFO') {
+        if (message.data) {
+          console.log('[Uato Naext] Current course info received:', message.data);
+          setPageType(message.data.pageType || 'other');
+          setCurrentCourse(message.data.currentCourse || null);
+          setCurrentQuiz(message.data.currentQuiz || null);
+        }
+      } else if (message.type === 'DISCUSSION_REDIRECT_COMPLETE') {
+        setDiscussionLoading(false);
+        if (message.error) {
+          setError(`Failed to navigate to discussion: ${message.error}`);
+        } else {
+          // After successful navigation, refresh the current page info
+          setTimeout(() => {
+            requestCurrentCourseInfo();
+          }, 1500);
+        }
+      } else if (message.type === 'AI_RESPONSE_COMPLETE') {
+        setAiGenerating(false);
+        if (message.error) {
+          setError(`Failed to generate AI response: ${message.error}`);
+        }
       }
     };
 
@@ -84,6 +128,22 @@ const Popup = () => {
       chrome.runtime.onMessage.removeListener(messageListener);
     };
   }, []);
+
+  // Request current course info from content script
+  const requestCurrentCourseInfo = async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.id) {
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_CURRENT_COURSE' }, response => {
+          if (!response) {
+            console.log('[Uato Naext] Could not get current course info from content script');
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[Uato Naext] Error requesting current course info:', error);
+    }
+  };
 
   // Process subjects to ensure they have all required fields and are sorted properly
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -240,8 +300,91 @@ const Popup = () => {
     }
   };
 
+  const navigateToDiscussion = async () => {
+    try {
+      setDiscussionLoading(true);
+      setError(null);
+
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]?.id) {
+        throw new Error('No active tab found');
+      }
+
+      // Send message to content script to click the discuss button
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'NAVIGATE_TO_DISCUSSION' }, response => {
+        if (!response) {
+          setError('Could not communicate with page. Please make sure you are on the quiz page.');
+          setDiscussionLoading(false);
+        }
+      });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (discussionLoading) {
+          setDiscussionLoading(false);
+          setError('Discussion navigation timed out. Please try again.');
+        }
+      }, 10000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to navigate to discussion');
+      setDiscussionLoading(false);
+    }
+  };
+
+  const generateAiResponse = async () => {
+    if (!currentQuiz || !currentCourse) {
+      setError('Quiz or course information not available');
+      return;
+    }
+
+    try {
+      setAiGenerating(true);
+      setError(null);
+
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]?.id) {
+        throw new Error('No active tab found');
+      }
+
+      // Send message to content script to generate and post AI response
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        {
+          type: 'GENERATE_AI_RESPONSE',
+          quizContent: currentQuiz.content,
+          courseTitle: currentCourse.title,
+        },
+        response => {
+          if (!response || response.status === 'error') {
+            setError(
+              response?.error || 'Could not communicate with page. Please make sure you are on the discussion page.',
+            );
+            setAiGenerating(false);
+          }
+          // Success will be handled by the message listener
+        },
+      );
+
+      // Timeout after 30 seconds for AI generation
+      setTimeout(() => {
+        if (aiGenerating) {
+          setAiGenerating(false);
+          setError('AI response generation timed out. Please try again.');
+        }
+      }, 30000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate AI response');
+      setAiGenerating(false);
+    }
+  };
+
   const navigateToUniversity = () => {
     const url = 'https://fu-edunext.fpt.edu.vn/';
+    chrome.tabs.create({ url });
+  };
+
+  const navigateToHomepage = () => {
+    const url = 'https://fu-edunext.fpt.edu.vn/home';
     chrome.tabs.create({ url });
   };
 
@@ -265,23 +408,99 @@ const Popup = () => {
     return `${diffDays} days ago`;
   };
 
-  const renderSubjectsSection = () => {
-    // Don't show subjects if not connected to university site
-    if (connectionStatus !== 'connected') {
+  const renderQuizView = () => {
+    if (!currentQuiz) {
       return (
-        <div className="not-connected-state">
-          <div className="university-icon">🎓</div>
-          <p className="not-connected-title">Connect to University</p>
-          <p className="not-connected-description">
-            Navigate to the FPT University website to view and manage your subjects.
+        <div className="current-course-not-found">
+          <div className="quiz-icon">📝</div>
+          <p className="current-course-title">Quiz Not Found</p>
+          <p className="current-course-description">
+            Could not identify the current quiz. Make sure you're on a valid quiz page.
           </p>
-          <button className="connect-button" onClick={navigateToUniversity}>
-            Go to University Site
+          <button className="view-all-button" onClick={navigateToHomepage}>
+            View All Courses
           </button>
         </div>
       );
     }
 
+    return (
+      <div className="quiz-view">
+        <div className="quiz-header">
+          <div className="quiz-icon">📝</div>
+          <p className="quiz-label">Current Quiz</p>
+        </div>
+
+        <div className="quiz-card">
+          <div className="quiz-content">
+            <h3 className="quiz-content-title">Quiz Content</h3>
+            <div className="quiz-content-text">{currentQuiz.content}</div>
+          </div>
+
+          <div className="quiz-info">
+            <p className="quiz-detail">Quiz ID: {currentQuiz.id}</p>
+            <p className="quiz-detail">Class ID: {currentQuiz.classId}</p>
+            <p className="quiz-detail">Session ID: {currentQuiz.sessionId}</p>
+            {currentQuiz.hasMarkdownEditor && <p className="quiz-detail editor-status">✅ Editor Available</p>}
+          </div>
+        </div>
+
+        <div className="quiz-actions">
+          <button className="discussion-button" onClick={navigateToDiscussion} disabled={discussionLoading}>
+            {discussionLoading ? 'Loading...' : 'Go to Discussion'}
+          </button>
+          <button
+            className="ai-button"
+            onClick={generateAiResponse}
+            disabled={aiGenerating || !currentQuiz.hasMarkdownEditor}>
+            {aiGenerating ? 'Generating...' : 'Generate AI Response'}
+          </button>
+          <button className="view-all-button" onClick={navigateToHomepage}>
+            View All Courses
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCurrentCourseView = () => {
+    if (!currentCourse) {
+      return (
+        <div className="current-course-not-found">
+          <div className="course-icon">📚</div>
+          <p className="current-course-title">Course Not Found</p>
+          <p className="current-course-description">
+            Could not identify the current course. Make sure you're on a valid course page.
+          </p>
+          <button className="view-all-button" onClick={navigateToHomepage}>
+            View All Courses
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="current-course-view">
+        <div className="current-course-header">
+          <div className="course-icon">📖</div>
+          <p className="current-course-label">Current Course</p>
+        </div>
+
+        <div className="current-course-card">
+          <h3 className="current-course-title">{currentCourse.title}</h3>
+          <p className="current-course-code">{currentCourse.courseCode}</p>
+        </div>
+
+        <div className="current-course-actions">
+          <button className="view-all-button" onClick={navigateToHomepage}>
+            View All Courses
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAllCoursesView = () => {
     // Show loading state
     if (loading) {
       return (
@@ -326,18 +545,77 @@ const Popup = () => {
     );
   };
 
+  const renderMainContent = () => {
+    // Don't show subjects if not connected to university site
+    if (connectionStatus !== 'connected') {
+      return (
+        <div className="not-connected-state">
+          <div className="university-icon">🎓</div>
+          <p className="not-connected-title">Connect to University</p>
+          <p className="not-connected-description">
+            Navigate to the FPT University website to view and manage your subjects.
+          </p>
+          <button className="connect-button" onClick={navigateToUniversity}>
+            Go to University Site
+          </button>
+        </div>
+      );
+    }
+
+    // Show quiz view if on quiz page
+    if (pageType === 'quiz') {
+      return renderQuizView();
+    }
+
+    // Show current course view if on course page
+    if (pageType === 'course') {
+      return renderCurrentCourseView();
+    }
+
+    // Show all courses view for homepage or other pages
+    return renderAllCoursesView();
+  };
+
+  const shouldShowFetchButton = () => {
+    return (
+      connectionStatus === 'connected' &&
+      pageType !== 'quiz' &&
+      (pageType === 'homepage' || (pageType === 'other' && subjects.length === 0))
+    );
+  };
+
+  const getHeaderTitle = () => {
+    if (pageType === 'quiz') {
+      return 'Quiz Page';
+    }
+    if (pageType === 'course' && currentCourse) {
+      return 'Current Course';
+    }
+    return 'Uato Naext';
+  };
+
+  const getHeaderSubtitle = () => {
+    if (pageType === 'course' || pageType === 'quiz') {
+      return null;
+    }
+
+    if (connectionStatus === 'connected') {
+      return (
+        <div className="semester">
+          {semester && <span className="semester-name">{semester}</span>}
+          {lastFetched && subjects.length > 0 && <span className="last-fetched"> • Updated {formatLastFetched()}</span>}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className={`popup-container ${isLight ? 'light-theme' : 'dark-theme'}`}>
       <header>
-        <h1>Uato Naext</h1>
-        {connectionStatus === 'connected' && (
-          <div className="semester">
-            {semester && <span className="semester-name">{semester}</span>}
-            {lastFetched && subjects.length > 0 && (
-              <span className="last-fetched"> • Updated {formatLastFetched()}</span>
-            )}
-          </div>
-        )}
+        <h1>{getHeaderTitle()}</h1>
+        {getHeaderSubtitle()}
 
         <div className={`connection-status ${connectionStatus}`}>
           <span className="status-indicator"></span>
@@ -345,7 +623,7 @@ const Popup = () => {
         </div>
       </header>
 
-      {connectionStatus === 'connected' && (
+      {shouldShowFetchButton() && (
         <div className="actions">
           <button className="fetch-button" onClick={fetchSubjects} disabled={loading}>
             {loading ? 'Loading...' : subjects.length > 0 ? 'Refresh Subjects' : 'Get Subjects'}
@@ -355,7 +633,7 @@ const Popup = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <div className="subjects-container">{renderSubjectsSection()}</div>
+      <div className="subjects-container">{renderMainContent()}</div>
 
       <footer>
         <div className="version">v1.0.0</div>
