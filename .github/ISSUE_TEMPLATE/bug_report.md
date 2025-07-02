@@ -1,35 +1,35 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: ''
+about: Create a report to help us improve EduFlow
+title: '[BUG] '
 labels: bug
-assignees: Jonghakseo
-
+assignees: yourusername
 ---
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+A clear description of the EduFlow issue.
+
+**University Portal Context**
+- Which page were you on? (Quiz/Course/Discussion)
+- What were you trying to do? (Generate AI response/Auto-grade/Navigate)
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+1. Open EduFlow extension on [specific university page]
+2. Click on [specific button]
+3. See error
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+What should EduFlow have done?
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem. Use [Brie](https://go.briehq.com/github?utm_source=CEB) to capture screenshots, errors, and network activity for faster issue resolution.
+Add screenshots of the EduFlow popup and university page.
 
-**Desktop (please complete the following information):**
- - OS: 
- - OS Version: 
- - Browser: 
- - Browser Version: 
- - Node Version: 
- - Other Necessary Packages Version: 
+**Environment:**
+- Browser: [Chrome/Firefox]
+- Browser Version:
+- EduFlow Version:
+- University Portal: FPT University
 
 **Additional context**
-Add any other context about the problem here.
+Any other context about the problem.

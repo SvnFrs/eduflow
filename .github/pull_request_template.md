@@ -1,23 +1,25 @@
-<!-- Describe what this PR is for in the title. -->
+## EduFlow Feature/Fix Description
 
-> `*` denotes required fields
+> Describe what this PR adds or fixes in EduFlow
 
 ## Priority*
 
-- [ ] High: This PR needs to be merged first, before other tasks.
-- [x] Medium: This PR should be merged quickly to prevent conflicts due to common changes. (default)
-- [ ] Low: This PR does not affect other tasks, so it can be merged later.
-
-## Purpose of the PR*
-<!-- Describe the purpose of the PR. -->
+- [ ] High: Critical bug fix or essential feature
+- [x] Medium: Feature enhancement or minor bug fix (default)
+- [ ] Low: Code cleanup or documentation
 
 ## Changes*
+<!-- Describe what changed in the extension -->
 
+## Testing
+<!-- How did you test this change? -->
+- [ ] Tested on FPT University portal
+- [ ] Verified AI response generation works
+- [ ] Confirmed auto-grading functionality
+- [ ] Checked course navigation
 
-## How to check the feature
-<!-- Describe how to check the feature in detail -->
-<!-- If there are any visual changes, please attach a screenshot for easy identification. -->
+## Screenshots/Demo
+<!-- If UI changes, add screenshots of the extension popup -->
 
-
-## Reference
-<!-- Any helpful information for understanding the PR. -->
+## Related Issues
+<!-- Link any related issues -->

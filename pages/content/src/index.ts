@@ -19,7 +19,7 @@ const injectApiHandler = () => {
 
 // Function to call Gemini API from content script
 const callGeminiAPI = async (quizContent: string, courseTitle: string): Promise<string> => {
-  const GEMINI_API_KEY = 'YOUR_GEMINI';
+  const GEMINI_API_KEY = '';
   const prompt = `Please generate a short answer based on the following quiz content and course: ${quizContent}, the course is ${courseTitle}`;
 
   try {
