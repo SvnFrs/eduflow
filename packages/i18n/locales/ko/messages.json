@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
     "description": "Extension description",
-    "message": "UatoNaext: 교육자를 위한 자동 채점 도우미"
+    "message": "EduFlow: 교육자를 위한 자동 채점 도우미"
   },
   "extensionName": {
     "description": "Extension name",
-    "message": "UatoNaext 채점 도우미"
+    "message": "EduFlow 채점 도우미"
   },
   "toggleTheme": {
     "message": "테마 변경"

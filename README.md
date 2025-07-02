@@ -1,268 +1,190 @@
 <div align="center">
 
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/99cb6303-64e4-4bed-bf3f-35735353e6de" />
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/a5dbf71c-c509-4c4f-80f4-be88a1943b0a" />
-    <img alt="Logo" src="https://github.com/user-attachments/assets/99cb6303-64e4-4bed-bf3f-35735353e6de" />
-</picture>
+# 🎓 EduFlow
+
+*Your AI-Powered University Companion (Because Who Has Time for Manual Course Management?)*
 
 ![](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![](https://img.shields.io/badge/Typescript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![](https://badges.aleen42.com/src/vitejs.svg)
+![](https://img.shields.io/badge/Chrome_Extension-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
+![](https://img.shields.io/badge/AI_Powered-FF6B6B?style=flat-square&logo=openai&logoColor=white)
 
-![GitHub action badge](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/actions/workflows/build-zip.yml/badge.svg)
-![GitHub action badge](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/actions/workflows/lint.yml/badge.svg)
-
-<img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/Jonghakseo/chrome-extension-boilerplate-react-viteFactions&count_bg=%23#222222&title_bg=%23#454545&title=😀&edge_flat=true" alt="hits"/>
-<a href="https://discord.gg/4ERQ6jgV9a" target="_blank"><img src="https://discord.com/api/guilds/1263404974830915637/widget.png"/></a>
-
-> This boilerplate
-> has [Legacy version](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/tree/legacy)
+*Making university life easier, one click at a time* ✨
 
 </div>
 
-> [!NOTE]
-> This project is listed in the [Awesome Vite](https://github.com/vitejs/awesome-vite)
+## 📖 Table of Contents
 
-> [!TIP]
-> Share storage state between all pages
->
-> https://github.com/user-attachments/assets/3b8e189f-6443-490e-a455-4f9570267f8c
-
-## Table of Contents
-
-- [Intro](#intro)
+- [What is EduFlow?](#what-is-eduflow)
 - [Features](#features)
-- [Structure](#structure)
-    - [ChromeExtension](#structure-chrome-extension)
-    - [Packages](#structure-packages)
-    - [Pages](#structure-pages)
-- [Getting started](#getting-started)
-    - [Chrome](#getting-started-chrome)
-    - [Firefox](#getting-started-firefox)
-- [Install dependency](#install-dependency)
-    - [For root](#install-dependency-for-root)
-    - [For module](#install-dependency-for-module)
-- [Environment variables](#env-variables)
-    - [Add new](#env-variables-new)
-    - [Set via CLI](#env-variables-cli-set)
-- [Community](#community)
-- [Reference](#reference)
-- [Star History](#star-history)
-- [Contributors](#contributors)
+- [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Usage Guide](#usage-guide)
+- [Technical Details](#technical-details)
+- [Contributing](#contributing)
 
-## Intro
+## 🚀 What is EduFlow?
 
-This boilerplate helps you create Chrome/Firefox extensions using React and Typescript. It improves
-the build speed and development experience by using Vite and Turborepo.
+EduFlow is a Chrome extension designed specifically for FPT University students who are tired of manually navigating through course materials, writing discussion posts, and grading teammates. Built with React, TypeScript, and powered by Google's Gemini AI, EduFlow transforms your university experience from tedious to seamless.
 
-## Features
+*Think of it as your personal academic assistant that never sleeps, never complains, and definitely doesn't judge your last-minute submissions.* 😄
 
-- [React19](https://reactjs.org/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Tailwindcss](https://tailwindcss.com/)
-- [Vite](https://vitejs.dev/) with [Rollup](https://rollupjs.org/)
-- [Turborepo](https://turbo.build/repo)
-- [Prettier](https://prettier.io/)
-- [ESLint](https://eslint.org/)
-- [Chrome Extensions Manifest Version 3](https://developer.chrome.com/docs/extensions/mv3/intro/)
-- [Custom i18n package](/packages/i18n/)
-- [Custom HMR (Hot Module Rebuild) plugin](/packages/hmr/)
-- [End-to-end testing with WebdriverIO](https://webdriver.io/)
+## ✨ Features
 
-## Getting started
+### 🎯 Smart Course Management
+- **Instant Course Detection**: Automatically identifies your current course and quiz pages
+- **Quick Navigation**: Jump between courses faster than you can say "deadline anxiety"
+- **Real-time Sync**: Keeps track of all your subjects and their details
 
-1. When you're using Windows run this:
-    - `git config --global core.eol lf`
-    - `git config --global core.autocrlf input`
+### 🤖 AI-Powered Discussion Assistant
+- **Intelligent Response Generation**: Let Gemini AI craft thoughtful discussion posts based on quiz content
+- **Context-Aware**: Understands your course material and generates relevant responses
+- **One-Click Posting**: From generation to submission in seconds
 
-   **This will set the EOL (End of line) character to be the same as on Linux/macOS. Without this, our bash script won't
-   work, and you will have conflicts with developers on Linux/macOS.**
-2. Clone this repository.( ```git clone https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite``` )
-3. Ensure your node version is >= than in `.nvmrc` file, recommend to
-   use [nvm](https://github.com/nvm-sh/nvm?tab=readme-ov-file#intro)
-4. Edit `/packages/i18n/locales/`{your locale(s)}/`messages.json`
-5. In the objects `extensionDescription` and `extensionName`, change the `message` fields (leave `description` alone)
-6. In `/.package.json`, change the `version` to the desired version of your extension.
-7. Install pnpm globally: `npm install -g pnpm` (ensure your node version >= 22.12.0)
-8. Run `pnpm install`
+### ⭐ Auto-Grading Magic
+- **Teammate Auto-Grader**: Automatically grades all teammates with 5 stars (because teamwork makes the dream work!)
+- **Smart Detection**: Recognizes grading modals and handles them instantly
+- **Zero Effort**: Sit back while EduFlow handles the repetitive grading tasks
 
-Then, depending on the target browser:
+### 🎨 User Experience
+- **Clean Interface**: Modern, intuitive design that doesn't make your eyes bleed
+- **Dark/Light Themes**: Because we respect your preference for late-night studying
+- **Real-time Status**: Always know what's happening with connection indicators
 
-### For Chrome: <a name="getting-started-chrome"></a>
+## 🛠 Getting Started
 
-1. Run:
-    - Dev: `pnpm dev` (on Windows, you should run as administrator;
-      see [issue#456](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/issues/456))
-    - Prod: `pnpm build`
-2. Open in browser - `chrome://extensions`
-3. Check - <kbd>Developer mode</kbd>
-4. Click - <kbd>Load unpacked</kbd> in the upper left corner
-5. Select the `dist` directory from the boilerplate project
+### Prerequisites
+- Google Chrome browser
+- FPT University student account
+- Node.js (>= 22.12.0)
+- pnpm package manager
 
-### For Firefox: <a name="getting-started-firefox"></a>
+### Installation
 
-1. Run:
-    - Dev: `pnpm dev:firefox`
-    - Prod: `pnpm build:firefox`
-2. Open in browser - `about:debugging#/runtime/this-firefox`
-3. Click - <kbd>Load Temporary Add-on...</kbd> in the upper right corner
-4. Select the `./dist/manifest.json` file from the boilerplate project
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/eduflow.git
+   cd eduflow
+   ```
 
-> [!NOTE]
-> In Firefox, you load add-ons in temporary mode. That means they'll disappear after each browser close. You have to
-> load the add-on on every browser launch.
+2. **Install dependencies**
+   ```bash
+   npm install -g pnpm
+   pnpm install
+   ```
 
-## Install dependency for turborepo: <a name="install-dependency"></a>
+3. **Build the extension**
+   ```bash
+   pnpm build
+   ```
 
-### For root: <a name="install-dependency-for-root"></a>
+4. **Load into Chrome**
+   - Open `chrome://extensions`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the `dist` directory
 
-1. Run `pnpm i <package> -w`
+## 📱 Usage Guide
 
-### For module: <a name="install-dependency-for-module"></a>
+### Getting Your Courses
+1. Navigate to the FPT University website
+2. Open the EduFlow extension
+3. Click "Get Subjects" to fetch your current semester courses
+4. Browse and click on any course to navigate directly to it
 
-1. Run `pnpm i <package> -F <module name>`
+### Using AI Discussion Assistant
+1. Open any quiz page on the university portal
+2. Click "Go to Discussion" in the EduFlow popup
+3. Once on the discussion page, click "Generate AI Response"
+4. Watch as Gemini AI crafts a thoughtful response based on your quiz content
+5. The response is automatically filled into the discussion input field
 
-`package` - Name of the package you want to install e.g. `nodemon` \
-`module-name` - You can find it inside each `package.json` under the key `name`, e.g. `@extension/content-script`, you
-can use only `content-script` without `@extension/` prefix
+### Auto-Grading Teammates
+1. When a grading modal appears (you know, the one that asks you to rate your teammates)
+2. EduFlow automatically detects it and shows "Auto Grade Team" button
+3. Click the button and watch as all teammates get 5-star ratings
+4. *Because let's be honest, everyone deserves those stars* ⭐
 
-## How do I disable modules I'm not using?
+### Navigation Features
+- **Course Pages**: See current course information and quick navigation options
+- **Quiz Detection**: Automatic detection of quiz content with AI response capabilities
+- **Discussion Access**: One-click navigation to discussion sections
 
+## 🔧 Technical Details
+
+### Architecture
+- **Frontend**: React 19 with TypeScript
+- **Styling**: Tailwind CSS for modern, responsive design
+- **Build Tool**: Vite with Rollup for fast development and optimized builds
+- **AI Integration**: Google Gemini 2.0 Flash model for content generation
+- **Extension API**: Chrome Extensions Manifest V3
+
+### Key Components
+- **Content Script**: Handles page interaction and DOM manipulation
+- **Background Script**: Manages extension lifecycle and API calls
+- **Popup Interface**: Main user interface for course management
+- **API Handler**: Manages university portal API interactions
+- **Storage System**: Persistent data storage for courses and preferences
+
+### Security Features
+- **Token Management**: Secure JWT token handling for university portal authentication
+- **Header Interception**: Smart capture of authentication headers for API calls
+- **Local Storage**: Safe storage of course data and user preferences
+
+## 🎨 Development
+
+### Development Server
 ```bash
-$ pnpm module-manager
+pnpm dev
 ```
 
-Read: [Module Manager](packages/module-manager/README.md)
+### Building for Production
+```bash
+pnpm build
+```
 
-## Environment variables
+### Linting and Formatting
+```bash
+pnpm lint
+pnpm format
+```
 
-Read: [Env Documentation](packages/env/README.md)
+## 🤝 Contributing
 
-## Boilerplate structure <a name="structure"></a>
+We welcome contributions! Whether it's:
+- 🐛 Bug fixes (because nobody's perfect, not even our code)
+- ✨ New features (got ideas? we're all ears!)
+- 📚 Documentation improvements
+- 🎨 UI/UX enhancements
 
-### Chrome extension <a name="structure-chrome-extension"></a>
+### Development Setup
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Test thoroughly (your future self will thank you)
+5. Commit with descriptive messages
+6. Push and create a Pull Request
 
-The extension lives in the `chrome-extension` directory and includes the following files:
+## 📝 License
 
-- [`manifest.ts`](chrome-extension/manifest.ts) - script that outputs the `manifest.json`
-- [`src/background`](chrome-extension/src/background) - [background script](https://developer.chrome.com/docs/extensions/mv3/background_pages/)
-  (`background.service_worker` in manifest.json)
-- [`public`](chrome-extension/public/) - icons referenced in the manifest; content CSS for user's page injection
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-> [!IMPORTANT]
-> To facilitate development, the boilerplate is configured to "Read and change all your data on all websites".
-> In production, it's best practice to limit the premissions to only the strictly necessary websites. See
-> [Declaring permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions)
-> and edit `manifest.js` accordingly.
+## 🙏 Acknowledgments
 
-### Pages <a name="structure-pages"></a>
-
-Code that is transpiled to be part of the extension lives in the [pages](pages/) directory.
-
-- [
-  `content`](pages/content/) - [content scripts](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts)
-  (`content_scripts` in manifest.json)
-- [`content-ui`](pages/content-ui) - React UI rendered in the current page (you can see it at the very bottom when you
-  get started)
-  (`content_scripts` in manifest.json)
-- [
-  `content-runtime`](pages/content-runtime/src/) - [injected content scripts](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts#functionality);
-  this can be injected from `popup` like standard `content`
-- [
-  `devtools`](pages/devtools/) - [extend the browser DevTools](https://developer.chrome.com/docs/extensions/how-to/devtools/extend-devtools#creating)
-  (`devtools_page` in manifest.json)
-- [
-  `devtools-panel`](pages/devtools-panel/) - [DevTools panel](https://developer.chrome.com/docs/extensions/reference/api/devtools/panels)
-  for [devtools](pages/devtools/src/index.ts)
-- [
-  `new-tab`](pages/new-tab/) - [override the default New Tab page](https://developer.chrome.com/docs/extensions/develop/ui/override-chrome-pages)
-  (`chrome_url_overrides.newtab` in manifest.json)
-- [`options`](pages/options/) - [options page](https://developer.chrome.com/docs/extensions/develop/ui/options-page)
-  (`options_page` in manifest.json)
-- [`popup`](pages/popup/) - [popup](https://developer.chrome.com/docs/extensions/reference/api/action#popup) shown when
-  clicking the extension in the toolbar
-  (`action.default_popup` in manifest.json)
-- [
-  `side-panel`](pages/side-panel/) - [sidepanel (Chrome 114+)](https://developer.chrome.com/docs/extensions/reference/api/sidePanel)
-  (`side_panel.default_path` in manifest.json)
-
-### Packages <a name="structure-packages"></a>
-
-Some shared packages:
-
-- `dev-utils` - utilities for Chrome extension development (manifest-parser, logger)
-- `env` - exports object which contain all environment variables from `.env` and dynamically declared
-- `hmr` - custom HMR plugin for Vite, injection script for reload/refresh, HMR dev-server
-- `i18n` - custom internationalization package; provides i18n function with type safety and other validation
-- `shared` - shared code for the entire project (types, constants, custom hooks, components etc.)
-- `storage` - helpers for easier integration with [storage](https://developer.chrome.com/docs/extensions/reference/api/storage), e.g. local/session storages
-- `tailwind-config` - shared Tailwind config for entire project
-- `tsconfig` - shared tsconfig for the entire project
-- `ui` - function to merge your Tailwind config with the global one; you can save components here
-- `vite-config` - shared Vite config for the entire project
-
-Other useful packages:
-
-- `zipper` - run `pnpm zip` to pack the `dist` folder into `extension-YYYYMMDD-HHmmss.zip` inside the newly created
-  `dist-zip`
-- `module-manager` - run `pnpm module-manager` to enable/disable modules
-- `e2e` - run `pnpm e2e` for end-to-end tests of your zipped extension on different browsers
-
-## Troubleshooting
-
-### Hot module reload seems to have frozen
-
-If saving source files doesn't cause the extension HMR code to trigger a reload of the browser page, try this:
-
-1. Ctrl+C the development server and restart it (`pnpm run dev`)
-2. If you get a [`grpc` error](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/issues/612),
-   [kill the
-   `turbo` process](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/issues/612#issuecomment-2518982339)
-   and run `pnpm dev` again.
-
-## Community
-
-To chat with other community members, you can join the [Discord](https://discord.gg/4ERQ6jgV9a) server.
-You can ask questions on that server, and you can also help others.
-
-Also, suggest new features or share any challenges you've faced while developing Chrome extensions!
-
-If you're debugging one, you can use [Brie](https://go.briehq.com/github?utm_source=CEB) lets you capture screenshots, errors, and network activity, making it easier for us to help.
-
-## Reference
-
-- [Chrome Extensions](https://developer.chrome.com/docs/extensions)
-- [Vite Plugin](https://vitejs.dev/guide/api-plugin.html)
-- [Rollup](https://rollupjs.org/guide/en/)
-- [Turborepo](https://turbo.build/repo/docs)
-- [Rollup-plugin-chrome-extension](https://www.extend-chrome.dev/rollup-plugin)
-
-## Star History <a name="star-history"></a>
-
-<a href="https://star-history.com/#Jonghakseo/chrome-extension-boilerplate-react-vite&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Jonghakseo/chrome-extension-boilerplate-react-vite&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Jonghakseo/chrome-extension-boilerplate-react-vite&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Jonghakseo/chrome-extension-boilerplate-react-vite&type=Date" />
- </picture>
-</a>
-
-## Contributors <a name="contributors"></a>
-
-This Boilerplate is made possible thanks to all of its contributors.
-
-<a href="https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite/graphs/contributors">
-  <img width="500px" src="https://contrib.rocks/image?repo=Jonghakseo/chrome-extension-boilerplate-react-vite" alt="All Contributors"/>
-</a>
+- **FPT University Students**: For inspiring this project through shared academic struggles
+- **Google Gemini AI**: For making our discussion posts sound smarter than we actually are
+- **React & TypeScript Communities**: For the amazing tools and documentation
+- **Coffee**: For making development possible at 3 AM
 
 ---
 
-## Special Thanks To
+<div align="center">
 
-| <a href="https://jb.gg/OpenSourceSupport"><img width="40" src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" alt="JetBrains Logo (Main) logo."></a> | <a href="https://www.linkedin.com/in/j-acks0n"><img width="40" style="border-radius:50%" src='https://avatars.githubusercontent.com/u/23139754' alt='Jackson Hong'/></a> |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+*Built with ❤️ and way too much caffeine*
 
----
+**EduFlow** - Making university life easier, one automation at a time
 
-Made by [Jonghakseo](https://jonghakseo.github.io/)
+*P.S. - We're not responsible if this extension makes you too efficient and you finish all your work early. Use responsibly!* 😉
+
+</div>

@@ -1,5 +1,5 @@
 (() => {
-  console.log('[Uato Naext] injected-fetch.js loaded');
+  console.log('[EduFlow] injected-fetch.js loaded');
 
   // Store the original fetch
   const originalFetch = window.fetch;
@@ -28,21 +28,21 @@
         const bearerToken = authorization.slice(7);
         if (bearerToken && bearerToken !== capturedToken) {
           capturedToken = bearerToken;
-          console.log('[Uato Naext] Captured new Bearer token');
+          console.log('[EduFlow] Captured new Bearer token');
 
           // Store locally
-          localStorage.setItem('uatoNaextToken', bearerToken);
+          localStorage.setItem('eduflowToken', bearerToken);
 
           // Send to extension
           window.dispatchEvent(
-            new CustomEvent('UATO_JWT_TOKEN', {
+            new CustomEvent('EDUFLOW_JWT_TOKEN', {
               detail: { token: bearerToken },
             }),
           );
         }
       }
     } catch (e) {
-      console.warn('[Uato Naext] Error processing headers:', e);
+      console.warn('[EduFlow] Error processing headers:', e);
     }
 
     // Continue with the original fetch
@@ -55,8 +55,8 @@
 
   XMLHttpRequest.prototype.open = function (...args) {
     // Store the method and URL for later use
-    this._uatoMethod = args[0];
-    this._uatoUrl = args[1];
+    this._eduflowMethod = args[0];
+    this._eduflowUrl = args[1];
     return originalXHROpen.apply(this, args);
   };
 
@@ -66,14 +66,14 @@
       const bearerToken = value.slice(7);
       if (bearerToken && bearerToken !== capturedToken) {
         capturedToken = bearerToken;
-        console.log('[Uato Naext] Captured new Bearer token from XHR');
+        console.log('[EduFlow] Captured new Bearer token from XHR');
 
         // Store locally
-        localStorage.setItem('uatoNaextToken', bearerToken);
+        localStorage.setItem('eduflowToken', bearerToken);
 
         // Send to extension
         window.dispatchEvent(
-          new CustomEvent('UATO_JWT_TOKEN', {
+          new CustomEvent('EDUFLOW_JWT_TOKEN', {
             detail: { token: bearerToken },
           }),
         );
@@ -83,11 +83,11 @@
   };
 
   // Try to retrieve token from localStorage if it exists
-  const storedToken = localStorage.getItem('uatoNaextToken');
+  const storedToken = localStorage.getItem('eduflowToken');
   if (storedToken) {
-    console.log('[Uato Naext] Found stored token');
+    console.log('[EduFlow] Found stored token');
     window.dispatchEvent(
-      new CustomEvent('UATO_JWT_TOKEN', {
+      new CustomEvent('EDUFLOW_JWT_TOKEN', {
         detail: { token: storedToken },
       }),
     );

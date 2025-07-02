@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
     "description": "Extension description",
-    "message": "UatoNaext: The automated grading assistant for educators"
+    "message": "EduFlow: The automated grading assistant for educators"
   },
   "extensionName": {
     "description": "Extension name",
-    "message": "UatoNaext Grading Assistant"
+    "message": "EduFlow Grading Assistant"
   },
   "toggleTheme": {
     "message": "Toggle theme"

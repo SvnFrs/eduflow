@@ -1,12 +1,12 @@
 (() => {
-  console.log('[Uato Naext] API handler loaded in page context');
+  console.log('[EduFlow] API handler loaded in page context');
 
   // Function to get JWT token
   const getJwtToken = () => {
     try {
-      return localStorage.getItem('uatoNaextToken');
+      return localStorage.getItem('eduflowToken');
     } catch (error) {
-      console.error('[Uato Naext] Error getting JWT token:', error);
+      console.error('[EduFlow] Error getting JWT token:', error);
       return null;
     }
   };
@@ -17,7 +17,7 @@
       const identify = localStorage.getItem('identify');
       return identify ? JSON.parse(identify) : null;
     } catch (error) {
-      console.error('[Uato Naext] Error getting user identity:', error);
+      console.error('[EduFlow] Error getting user identity:', error);
       return null;
     }
   };
@@ -45,7 +45,7 @@
           'x-expiration': headers['x-expiration'],
         };
         lastCaptureTime = new Date();
-        console.log('[Uato Naext] Captured headers from legitimate request:', {
+        console.log('[EduFlow] Captured headers from legitimate request:', {
           'x-date': headers['x-date'],
           'x-expiration': headers['x-expiration'],
         });
@@ -72,7 +72,7 @@
           'x-expiration': headerCapture['x-expiration'],
         };
         lastCaptureTime = new Date();
-        console.log('[Uato Naext] Captured headers from XHR request:', {
+        console.log('[EduFlow] Captured headers from XHR request:', {
           'x-date': headerCapture['x-date'],
           'x-expiration': headerCapture['x-expiration'],
         });
@@ -88,13 +88,91 @@
     return !!editor;
   };
 
+  // Function to check if grading modal is present
+  const hasGradingModal = () => {
+    const modal = document.querySelector('.MuiDialogContent-root');
+    return modal && modal.innerText.includes('You are grading for groupmates');
+  };
+
+  // Function to auto-grade groupmates
+  const autoGradeGroupmates = () => {
+    return new Promise((resolve, reject) => {
+      const modal = document.querySelector('.MuiDialogContent-root');
+
+      if (!modal || !modal.innerText.includes('You are grading for groupmates')) {
+        reject(new Error('Grading modal not found'));
+        return;
+      }
+
+      console.log('[EduFlow] 🎯 Grading modal detected. Waiting for content to load...');
+
+      // Wait until stars are rendered (poll every 300ms, max 10s)
+      let checkCount = 0;
+      const maxChecks = 30;
+
+      const interval = setInterval(() => {
+        const allRatingGroups = modal.querySelectorAll('.MuiRating-root');
+
+        if (allRatingGroups.length > 0) {
+          console.log(`[EduFlow] 🟢 Found ${allRatingGroups.length} rating groups. Auto grading...`);
+
+          try {
+            // Grade all with 5 stars
+            allRatingGroups.forEach((rating, index) => {
+              const stars = rating.querySelectorAll('input[type="radio"]');
+              const maxStar = Array.from(stars).find(star => star.value === '5');
+
+              if (maxStar) {
+                maxStar.click();
+                console.log(`[EduFlow] Rated group ${index + 1} with 5 stars`);
+              }
+            });
+
+            console.log('[EduFlow] ✅ Auto graded all teammates with 5 stars.');
+
+            // Wait a bit for the UI to update, then submit
+            setTimeout(() => {
+              const gradeButton = document.querySelector('button[type="button"] span[title="Grade"]')?.parentElement;
+
+              if (gradeButton) {
+                console.log('[EduFlow] 📝 Submitting grades...');
+                gradeButton.click();
+
+                // Wait for submission to complete
+                setTimeout(() => {
+                  resolve({
+                    success: true,
+                    gradedCount: allRatingGroups.length,
+                    message: `Successfully graded ${allRatingGroups.length} teammates with 5 stars`,
+                  });
+                }, 1000);
+              } else {
+                reject(new Error('Grade submit button not found'));
+              }
+            }, 500);
+
+            clearInterval(interval);
+          } catch (error) {
+            clearInterval(interval);
+            reject(error);
+          }
+        }
+
+        if (++checkCount >= maxChecks) {
+          clearInterval(interval);
+          reject(new Error('Timeout: Could not find rating stars in time'));
+        }
+      }, 300);
+    });
+  };
+
   // Function to check markdown editor and respond
   const checkMarkdownEditor = () => {
     const hasEditor = hasMarkdownEditor();
-    console.log('[Uato Naext] Markdown editor check:', hasEditor);
+    console.log('[EduFlow] Markdown editor check:', hasEditor);
 
     window.dispatchEvent(
-      new CustomEvent('UATO_API_RESPONSE', {
+      new CustomEvent('EDUFLOW_API_RESPONSE', {
         detail: {
           type: 'markdown_editor_check',
           hasEditor: hasEditor,
@@ -103,20 +181,60 @@
     );
   };
 
+  // Function to check grading modal and respond
+  const checkGradingModal = () => {
+    const hasModal = hasGradingModal();
+    console.log('[EduFlow] Grading modal check:', hasModal);
+
+    window.dispatchEvent(
+      new CustomEvent('EDUFLOW_API_RESPONSE', {
+        detail: {
+          type: 'grading_modal_check',
+          hasModal: hasModal,
+        },
+      }),
+    );
+  };
+
+  // Function to handle auto grading request
+  const handleAutoGrading = async () => {
+    try {
+      const result = await autoGradeGroupmates();
+      window.dispatchEvent(
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
+          detail: {
+            type: 'auto_grading_complete',
+            data: result,
+          },
+        }),
+      );
+    } catch (error) {
+      console.error('[EduFlow] Error auto grading:', error);
+      window.dispatchEvent(
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
+          detail: {
+            type: 'auto_grading_error',
+            error: error.message || 'Failed to auto grade teammates',
+          },
+        }),
+      );
+    }
+  };
+
   // Improved function to find and fill the discussion input field
   const fillDiscussionInput = text => {
     try {
-      console.log('[Uato Naext] Attempting to fill discussion input with improved method');
+      console.log('[EduFlow] Attempting to fill discussion input with improved method');
 
       // Find the textarea using the specific selector
       const ta = document.querySelector('.comment-editor textarea.w-md-editor-text-input');
 
       if (!ta) {
-        console.log('[Uato Naext] Discussion textarea not found');
+        console.log('[EduFlow] Discussion textarea not found');
         return false;
       }
 
-      console.log('[Uato Naext] Found textarea, applying React-friendly input method');
+      console.log('[EduFlow] Found textarea, applying React-friendly input method');
 
       // Get React's real value setter
       const proto = Object.getPrototypeOf(ta);
@@ -134,10 +252,10 @@
       // Focus the textarea
       ta.focus();
 
-      console.log('[Uato Naext] Successfully filled discussion input with AI response using React method');
+      console.log('[EduFlow] Successfully filled discussion input with AI response using React method');
       return true;
     } catch (error) {
-      console.error('[Uato Naext] Error filling discussion input:', error);
+      console.error('[EduFlow] Error filling discussion input:', error);
       return false;
     }
   };
@@ -149,7 +267,7 @@
 
       if (filled) {
         window.dispatchEvent(
-          new CustomEvent('UATO_API_RESPONSE', {
+          new CustomEvent('EDUFLOW_API_RESPONSE', {
             detail: {
               type: 'editor_filled',
               data: { success: true },
@@ -158,7 +276,7 @@
         );
       } else {
         window.dispatchEvent(
-          new CustomEvent('UATO_API_RESPONSE', {
+          new CustomEvent('EDUFLOW_API_RESPONSE', {
             detail: {
               type: 'editor_fill_error',
               error: 'Could not find or fill discussion input field',
@@ -167,9 +285,9 @@
         );
       }
     } catch (error) {
-      console.error('[Uato Naext] Error handling fill editor:', error);
+      console.error('[EduFlow] Error handling fill editor:', error);
       window.dispatchEvent(
-        new CustomEvent('UATO_API_RESPONSE', {
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
           detail: {
             type: 'editor_fill_error',
             error: error.message || 'Failed to fill editor',
@@ -188,7 +306,7 @@
       const classIdMatch = currentUrl.match(/classId=(\d+)/);
       if (classIdMatch) {
         const classId = parseInt(classIdMatch[1], 10);
-        console.log('[Uato Naext] Found classId in URL:', classId);
+        console.log('[EduFlow] Found classId in URL:', classId);
       }
 
       // Try to get course info from localStorage using any available courses
@@ -204,14 +322,14 @@
               // For quiz pages, we'll use the first available course as fallback
               // since we can't easily match the exact course from the quiz URL
               const course = parsed.data[0];
-              console.log('[Uato Naext] Using course info for quiz:', course);
+              console.log('[EduFlow] Using course info for quiz:', course);
               return {
                 ...course,
                 title: course.title.split('_')[0], // Remove everything after underscore if exists
               };
             }
           } catch (e) {
-            console.error('[Uato Naext] Error parsing courses from localStorage:', e);
+            console.error('[EduFlow] Error parsing courses from localStorage:', e);
           }
         }
       }
@@ -223,7 +341,7 @@
         courseCode: 'UNKNOWN',
       };
     } catch (error) {
-      console.error('[Uato Naext] Error getting course info from quiz URL:', error);
+      console.error('[EduFlow] Error getting course info from quiz URL:', error);
       return {
         title: 'Current Course',
         courseId: 0,
@@ -252,12 +370,16 @@
       // Check if markdown editor is available
       const hasEditor = hasMarkdownEditor();
 
-      console.log('[Uato Naext] Detected quiz from URL:', {
+      // Check if grading modal is available
+      const hasModal = hasGradingModal();
+
+      console.log('[EduFlow] Detected quiz from URL:', {
         id,
         classId,
         sessionId,
         content,
         hasMarkdownEditor: hasEditor,
+        hasGradingModal: hasModal,
       });
 
       return {
@@ -266,9 +388,10 @@
         sessionId,
         content,
         hasMarkdownEditor: hasEditor,
+        hasGradingModal: hasModal,
       };
     } catch (error) {
-      console.error('[Uato Naext] Error extracting quiz info:', error);
+      console.error('[EduFlow] Error extracting quiz info:', error);
       return null;
     }
   };
@@ -285,12 +408,12 @@
       }
 
       const courseId = parseInt(courseMatch[1], 10);
-      console.log('[Uato Naext] Detected course ID from URL:', courseId);
+      console.log('[EduFlow] Detected course ID from URL:', courseId);
 
       // Get the courses from localStorage
       const semester = localStorage.getItem('SELECTED_SEMESTER');
       if (!semester) {
-        console.log('[Uato Naext] No semester found in localStorage');
+        console.log('[EduFlow] No semester found in localStorage');
         return null;
       }
 
@@ -304,23 +427,23 @@
             // Find the course that matches the ID
             const course = parsed.data.find(c => c.courseId === courseId);
             if (course) {
-              console.log('[Uato Naext] Found matching course:', course);
+              console.log('[EduFlow] Found matching course:', course);
               return {
                 ...course,
                 title: course.title.split('_')[0], // Remove everything after underscore if exists
               };
             } else {
-              console.log('[Uato Naext] No course found with ID:', courseId);
+              console.log('[EduFlow] No course found with ID:', courseId);
             }
           }
         } catch (e) {
-          console.error('[Uato Naext] Error parsing courses from localStorage:', e);
+          console.error('[EduFlow] Error parsing courses from localStorage:', e);
         }
       }
 
       return null;
     } catch (error) {
-      console.error('[Uato Naext] Error detecting current course:', error);
+      console.error('[EduFlow] Error detecting current course:', error);
       return null;
     }
   };
@@ -340,7 +463,7 @@
         return 'other';
       }
     } catch (error) {
-      console.error('[Uato Naext] Error checking page type:', error);
+      console.error('[EduFlow] Error checking page type:', error);
       return 'other';
     }
   };
@@ -348,7 +471,7 @@
   // Function to navigate to discussion page
   const navigateToDiscussion = () => {
     try {
-      console.log('[Uato Naext] Looking for DISCUSS button');
+      console.log('[EduFlow] Looking for DISCUSS button');
 
       // Use the improved selector method
       const discussBtn = Array.from(document.querySelectorAll('button[role="tab"]')).find(
@@ -356,12 +479,12 @@
       );
 
       if (discussBtn) {
-        console.log('[Uato Naext] Found DISCUSS button, clicking...');
+        console.log('[EduFlow] Found DISCUSS button, clicking...');
         discussBtn.click();
 
         // Send success response
         window.dispatchEvent(
-          new CustomEvent('UATO_API_RESPONSE', {
+          new CustomEvent('EDUFLOW_API_RESPONSE', {
             detail: {
               type: 'discussion_redirect',
               data: { success: true, message: 'Successfully navigated to discussion' },
@@ -369,18 +492,18 @@
           }),
         );
       } else {
-        console.log('[Uato Naext] DISCUSS button not found');
+        console.log('[EduFlow] DISCUSS button not found');
 
         // Log all tab buttons for debugging
         const allTabButtons = Array.from(document.querySelectorAll('button[role="tab"]'));
         console.log(
-          '[Uato Naext] All tab buttons found:',
+          '[EduFlow] All tab buttons found:',
           allTabButtons.map(btn => btn.textContent?.trim()),
         );
 
         // Send error response
         window.dispatchEvent(
-          new CustomEvent('UATO_API_RESPONSE', {
+          new CustomEvent('EDUFLOW_API_RESPONSE', {
             detail: {
               type: 'discussion_redirect',
               error:
@@ -390,10 +513,10 @@
         );
       }
     } catch (error) {
-      console.error('[Uato Naext] Error navigating to discussion:', error);
+      console.error('[EduFlow] Error navigating to discussion:', error);
 
       window.dispatchEvent(
-        new CustomEvent('UATO_API_RESPONSE', {
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
           detail: {
             type: 'discussion_redirect',
             error: error.message || 'Failed to navigate to discussion',
@@ -413,14 +536,14 @@
       currentQuiz = getQuizInfoFromUrl();
       // Always provide course info for quiz pages
       currentCourse = getCourseInfoFromQuizUrl();
-      console.log('[Uato Naext] Quiz page detected - currentCourse:', currentCourse, 'currentQuiz:', currentQuiz);
+      console.log('[EduFlow] Quiz page detected - currentCourse:', currentCourse, 'currentQuiz:', currentQuiz);
     } else if (pageType === 'course') {
       currentCourse = getCurrentCourseFromUrl();
-      console.log('[Uato Naext] Course page detected - currentCourse:', currentCourse);
+      console.log('[EduFlow] Course page detected - currentCourse:', currentCourse);
     }
 
     window.dispatchEvent(
-      new CustomEvent('UATO_API_RESPONSE', {
+      new CustomEvent('EDUFLOW_API_RESPONSE', {
         detail: {
           type: 'current_course',
           data: {
@@ -436,16 +559,16 @@
   // Function to handle course redirection (simplified)
   const handleCourseRedirection = async courseId => {
     try {
-      console.log(`[Uato Naext] Handling redirection for course ${courseId}`);
+      console.log(`[EduFlow] Handling redirection for course ${courseId}`);
 
       // Create the direct URL without needing to fetch class information
       const redirectUrl = `https://fu-edunext.fpt.edu.vn/course?id=${courseId}`;
 
-      console.log(`[Uato Naext] Redirecting directly to: ${redirectUrl}`);
+      console.log(`[EduFlow] Redirecting directly to: ${redirectUrl}`);
 
       // Send the redirection info back to content script
       window.dispatchEvent(
-        new CustomEvent('UATO_API_RESPONSE', {
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
           detail: {
             type: 'course_redirect',
             data: {
@@ -456,10 +579,10 @@
         }),
       );
     } catch (error) {
-      console.error('[Uato Naext] Error in course redirection:', error);
+      console.error('[EduFlow] Error in course redirection:', error);
 
       window.dispatchEvent(
-        new CustomEvent('UATO_API_RESPONSE', {
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
           detail: {
             type: 'course_redirect',
             error: error.message || 'Failed to create redirect URL',
@@ -474,7 +597,7 @@
     try {
       const semester = localStorage.getItem('SELECTED_SEMESTER');
       if (!semester) {
-        console.log('[Uato Naext] No semester found in localStorage');
+        console.log('[EduFlow] No semester found in localStorage');
         return null;
       }
 
@@ -485,17 +608,17 @@
         try {
           const parsed = JSON.parse(cached);
           if (parsed.data) {
-            console.log('[Uato Naext] Found subjects in localStorage:', parsed.data.length);
+            console.log('[EduFlow] Found subjects in localStorage:', parsed.data.length);
             return parsed.data;
           }
         } catch (e) {
-          console.error('[Uato Naext] Error parsing subjects from localStorage:', e);
+          console.error('[EduFlow] Error parsing subjects from localStorage:', e);
         }
       }
 
       return null;
     } catch (error) {
-      console.error('[Uato Naext] Error accessing localStorage:', error);
+      console.error('[EduFlow] Error accessing localStorage:', error);
       return null;
     }
   };
@@ -506,7 +629,7 @@
 
     if (subjects) {
       window.dispatchEvent(
-        new CustomEvent('UATO_API_RESPONSE', {
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
           detail: {
             type: 'subjects',
             data: subjects,
@@ -515,7 +638,7 @@
       );
     } else {
       window.dispatchEvent(
-        new CustomEvent('UATO_API_RESPONSE', {
+        new CustomEvent('EDUFLOW_API_RESPONSE', {
           detail: {
             type: 'subjects',
             error: 'Could not find subjects data in localStorage. Please refresh the university page first.',
@@ -526,54 +649,103 @@
   };
 
   // Listen for fetch subjects request
-  window.addEventListener('UATO_FETCH_SUBJECTS', () => {
-    console.log('[Uato Naext] Received request to fetch subjects in page context');
+  window.addEventListener('EDUFLOW_FETCH_SUBJECTS', () => {
+    console.log('[EduFlow] Received request to fetch subjects in page context');
     handleSubjectsRequest();
   });
 
   // Listen for current course request
-  window.addEventListener('UATO_GET_CURRENT_COURSE', () => {
-    console.log('[Uato Naext] Received request to get current course in page context');
+  window.addEventListener('EDUFLOW_GET_CURRENT_COURSE', () => {
+    console.log('[EduFlow] Received request to get current course in page context');
     handleCurrentCourseRequest();
   });
 
   // Listen for course redirection request
-  window.addEventListener('UATO_COURSE_REDIRECT', event => {
+  window.addEventListener('EDUFLOW_COURSE_REDIRECT', event => {
     const { courseId } = event.detail || {};
     if (courseId) {
-      console.log(`[Uato Naext] Received request to redirect to course ${courseId}`);
+      console.log(`[EduFlow] Received request to redirect to course ${courseId}`);
       handleCourseRedirection(courseId);
     }
   });
 
   // Listen for discussion navigation request
-  window.addEventListener('UATO_NAVIGATE_TO_DISCUSSION', () => {
-    console.log('[Uato Naext] Received request to navigate to discussion in page context');
+  window.addEventListener('EDUFLOW_NAVIGATE_TO_DISCUSSION', () => {
+    console.log('[EduFlow] Received request to navigate to discussion in page context');
     navigateToDiscussion();
   });
 
   // Listen for markdown editor check request
-  window.addEventListener('UATO_CHECK_MARKDOWN_EDITOR', () => {
-    console.log('[Uato Naext] Received request to check markdown editor');
+  window.addEventListener('EDUFLOW_CHECK_MARKDOWN_EDITOR', () => {
+    console.log('[EduFlow] Received request to check markdown editor');
     checkMarkdownEditor();
   });
 
+  // Listen for grading modal check request
+  window.addEventListener('EDUFLOW_CHECK_GRADING_MODAL', () => {
+    console.log('[EduFlow] Received request to check grading modal');
+    checkGradingModal();
+  });
+
+  // Listen for auto grading request
+  window.addEventListener('EDUFLOW_AUTO_GRADE_TEAMMATES', () => {
+    console.log('[EduFlow] Received request to auto grade teammates');
+    handleAutoGrading();
+  });
+
   // Listen for fill editor request
-  window.addEventListener('UATO_FILL_EDITOR', event => {
+  window.addEventListener('EDUFLOW_FILL_EDITOR', event => {
     const { text } = event.detail || {};
     if (text) {
-      console.log('[Uato Naext] Received request to fill editor with text');
+      console.log('[EduFlow] Received request to fill editor with text');
       handleFillEditor(text);
     }
   });
 
-  // Rest of the initialization code remains the same...
+  // Auto-grading observer that works continuously
+  const setupAutoGradingObserver = () => {
+    console.log('[EduFlow] Setting up auto-grading observer...');
+
+    const observer = new MutationObserver(mutations => {
+      // Check if a grading modal appeared
+      const modal = document.querySelector('.MuiDialogContent-root');
+
+      if (modal && modal.innerText.includes('You are grading for groupmates')) {
+        console.log('[EduFlow] 🎯 Auto-grading observer detected grading modal');
+
+        // Notify about modal detection
+        window.dispatchEvent(
+          new CustomEvent('EDUFLOW_API_RESPONSE', {
+            detail: {
+              type: 'grading_modal_detected',
+              data: { detected: true },
+            },
+          }),
+        );
+
+        // Auto-trigger grading after a short delay
+        setTimeout(() => {
+          handleAutoGrading();
+        }, 500);
+      }
+    });
+
+    // Start observing
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    console.log('[EduFlow] Auto-grading observer active');
+  };
+
+  // Rest of the initialization code...
   // Check immediately for subjects when script loads
   const initialSubjects = getSubjectsFromStorage();
   if (initialSubjects) {
-    console.log('[Uato Naext] Found subjects during initialization');
+    console.log('[EduFlow] Found subjects during initialization');
     window.dispatchEvent(
-      new CustomEvent('UATO_API_RESPONSE', {
+      new CustomEvent('EDUFLOW_API_RESPONSE', {
         detail: {
           type: 'subjects',
           data: initialSubjects,
@@ -595,13 +767,13 @@
   }
 
   if (initialPageType || initialCurrentCourse || initialCurrentQuiz) {
-    console.log('[Uato Naext] Found page info during initialization:', {
+    console.log('[EduFlow] Found page info during initialization:', {
       pageType: initialPageType,
       currentCourse: initialCurrentCourse,
       currentQuiz: initialCurrentQuiz,
     });
     window.dispatchEvent(
-      new CustomEvent('UATO_API_RESPONSE', {
+      new CustomEvent('EDUFLOW_API_RESPONSE', {
         detail: {
           type: 'current_course',
           data: {
@@ -614,12 +786,22 @@
     );
   }
 
+  // Setup auto-grading observer for quiz pages
+  if (initialPageType === 'quiz') {
+    setupAutoGradingObserver();
+  }
+
   // Monitor for URL changes (for SPAs)
   let currentUrl = window.location.href;
   const checkUrlChange = () => {
     if (window.location.href !== currentUrl) {
       currentUrl = window.location.href;
-      console.log('[Uato Naext] URL changed, checking current course');
+      console.log('[EduFlow] URL changed, checking current course');
+
+      // Setup auto-grading observer if we're now on a quiz page
+      if (getCurrentPageType() === 'quiz') {
+        setupAutoGradingObserver();
+      }
 
       // Wait a bit for the page to load
       setTimeout(() => {
@@ -633,9 +815,14 @@
 
   // Also listen for popstate events (back/forward buttons)
   window.addEventListener('popstate', () => {
-    console.log('[Uato Naext] Popstate event, checking current course');
+    console.log('[EduFlow] Popstate event, checking current course');
     setTimeout(() => {
       handleCurrentCourseRequest();
+
+      // Setup auto-grading observer if we're on a quiz page
+      if (getCurrentPageType() === 'quiz') {
+        setupAutoGradingObserver();
+      }
     }, 500);
   });
 
@@ -648,9 +835,9 @@
       try {
         const parsed = JSON.parse(value);
         if (parsed.data) {
-          console.log('[Uato Naext] Detected new subjects data in localStorage');
+          console.log('[EduFlow] Detected new subjects data in localStorage');
           window.dispatchEvent(
-            new CustomEvent('UATO_API_RESPONSE', {
+            new CustomEvent('EDUFLOW_API_RESPONSE', {
               detail: {
                 type: 'subjects',
                 data: parsed.data,
@@ -693,7 +880,7 @@
     });
 
     if (shouldCheckQuiz && getCurrentPageType() === 'quiz') {
-      console.log('[Uato Naext] Quiz content or editor DOM changes detected, updating quiz info');
+      console.log('[EduFlow] Quiz content or editor DOM changes detected, updating quiz info');
       setTimeout(() => {
         handleCurrentCourseRequest();
       }, 500);
@@ -714,12 +901,12 @@
 
       // Clear headers older than 1 minute
       if (timeSinceCapture > 60000) {
-        console.log('[Uato Naext] Clearing old captured headers');
+        console.log('[EduFlow] Clearing old captured headers');
         capturedHeaders = null;
         lastCaptureTime = null;
       }
     }
   }, 30000); // Check every 30 seconds
 
-  console.log('[Uato Naext] API handler initialization complete with quiz detection and AI integration');
+  console.log('[EduFlow] API handler initialization complete with quiz detection, AI integration, and auto-grading');
 })();

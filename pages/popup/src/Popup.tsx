@@ -18,7 +18,8 @@ interface QuizInfo {
   classId: string;
   sessionId: string;
   content: string;
-  hasMarkdownEditor: boolean; // Add this field
+  hasMarkdownEditor: boolean;
+  hasGradingModal?: boolean; // Add this field
 }
 
 type PageType = 'homepage' | 'course' | 'quiz' | 'other';
@@ -38,6 +39,7 @@ const Popup = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const [discussionLoading, setDiscussionLoading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [autoGrading, setAutoGrading] = useState(false);
 
   useEffect(() => {
     // Check if we're on the university site
@@ -89,7 +91,7 @@ const Popup = () => {
         }
       } else if (message.type === 'COURSE_REDIRECT_READY') {
         if (message.data) {
-          console.log('[Uato Naext] Course redirect ready:', message.data);
+          console.log('[EduFlow] Course redirect ready:', message.data);
           // Open the course in a new tab with the proper classId
           chrome.tabs.create({ url: message.data.redirectUrl });
           setRedirectingCourseId(null);
@@ -99,7 +101,7 @@ const Popup = () => {
         }
       } else if (message.type === 'CURRENT_COURSE_INFO') {
         if (message.data) {
-          console.log('[Uato Naext] Current course info received:', message.data);
+          console.log('[EduFlow] Current course info received:', message.data);
           setPageType(message.data.pageType || 'other');
           setCurrentCourse(message.data.currentCourse || null);
           setCurrentQuiz(message.data.currentQuiz || null);
@@ -119,6 +121,13 @@ const Popup = () => {
         if (message.error) {
           setError(`Failed to generate AI response: ${message.error}`);
         }
+      } else if (message.type === 'AUTO_GRADING_COMPLETE') {
+        setAutoGrading(false);
+        if (message.error) {
+          setError(`Failed to auto-grade teammates: ${message.error}`);
+        }
+      } else if (message.type === 'GRADING_MODAL_DETECTED') {
+        console.log('[EduFlow] Grading modal detected automatically');
       }
     };
 
@@ -136,12 +145,12 @@ const Popup = () => {
       if (tabs[0]?.id) {
         chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_CURRENT_COURSE' }, response => {
           if (!response) {
-            console.log('[Uato Naext] Could not get current course info from content script');
+            console.log('[EduFlow] Could not get current course info from content script');
           }
         });
       }
     } catch (error) {
-      console.error('[Uato Naext] Error requesting current course info:', error);
+      console.error('[EduFlow] Error requesting current course info:', error);
     }
   };
 
@@ -378,6 +387,35 @@ const Popup = () => {
     }
   };
 
+  const autoGradeTeammates = async () => {
+    try {
+      setAutoGrading(true);
+      setError(null);
+
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]?.id) {
+        throw new Error('No active tab found');
+      }
+
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'AUTO_GRADE_TEAMMATES' }, response => {
+        if (!response || response.status === 'error') {
+          setError(response?.error || 'Could not communicate with page.');
+          setAutoGrading(false);
+        }
+      });
+
+      setTimeout(() => {
+        if (autoGrading) {
+          setAutoGrading(false);
+          setError('Auto-grading timed out. Please try again.');
+        }
+      }, 15000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to auto-grade teammates');
+      setAutoGrading(false);
+    }
+  };
+
   const navigateToUniversity = () => {
     const url = 'https://fu-edunext.fpt.edu.vn/';
     chrome.tabs.create({ url });
@@ -455,6 +493,9 @@ const Popup = () => {
             disabled={aiGenerating || !currentQuiz.hasMarkdownEditor}>
             {aiGenerating ? 'Generating...' : 'Generate AI Response'}
           </button>
+          <button className="grade-button" onClick={autoGradeTeammates} disabled={autoGrading}>
+            {autoGrading ? 'Grading...' : 'Auto Grade Team'}
+          </button>
           <button className="view-all-button" onClick={navigateToHomepage}>
             View All Courses
           </button>
@@ -492,7 +533,7 @@ const Popup = () => {
         </div>
 
         <div className="current-course-actions">
-          <button className="view-all-button" onClick={navigateToHomepage}>
+          <button className="  view-all-button" onClick={navigateToHomepage}>
             View All Courses
           </button>
         </div>
@@ -591,7 +632,7 @@ const Popup = () => {
     if (pageType === 'course' && currentCourse) {
       return 'Current Course';
     }
-    return 'Uato Naext';
+    return 'EduFlow';
   };
 
   const getHeaderSubtitle = () => {
@@ -637,7 +678,7 @@ const Popup = () => {
 
       <footer>
         <div className="version">v1.0.0</div>
-        <div className="credits">Uato Naext</div>
+        <div className="credits">EduFlow</div>
       </footer>
     </div>
   );
